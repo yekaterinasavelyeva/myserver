@@ -1,0 +1,10 @@
+HttpSession session = request.getSession();
+Long userId = session.getAttribute("userId");
+
+if(userId == null){
+	userId = userIdGenerator.getAndIncrement();
+	session.setAttribute("userId", userId);
+	
+}
+
+String key = session.toString();
