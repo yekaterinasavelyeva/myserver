@@ -1,9 +1,8 @@
 package servlets;
 
-import accounts.AccountService;
-import accounts.UserProfile;
-import com.google.gson.Gson;
-
+import domain.UserProfile;
+import database.DBException;
+import database.DBService;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -17,24 +16,29 @@ import java.io.IOException;
 
 public class SignInServlet extends HttpServlet {
 
-    private final AccountService accountService;
+    private final DBService service;
 
-    public SignInServlet(AccountService accountService) {
-        this.accountService = accountService;
+    public SignInServlet(DBService service) {
+        this.service = service;
     }
 
     //get public user profile
     public void doGet(HttpServletRequest request,
                       HttpServletResponse response) throws ServletException, IOException {
-        String sessionId = request.getSession().getId();
-        UserProfile profile = accountService.getUserBySessionId(sessionId);
-        if (profile == null) {
-            response.setContentType("text/html;charset=utf-8");
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        } else {
-            response.setContentType("text/html;charset=utf-8");
-            response.getWriter().println("Authorized: " + profile.getLogin());
-            response.setStatus(HttpServletResponse.SC_OK);
+        try {
+            String sessionId = request.getSession().getId();
+            long id = service.getUserIdBySessionId(sessionId);
+            UserProfile profile = service.getUser(id);
+            if (profile == null) {
+                response.setContentType("text/html;charset=utf-8");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            } else {
+                response.setContentType("text/html;charset=utf-8");
+                response.getWriter().println("Authorized: " + profile.getLogin());
+                response.setStatus(HttpServletResponse.SC_OK);
+            }
+        } catch (DBException dex){
+            dex.printStackTrace();
         }
     }
 
@@ -50,18 +54,20 @@ public class SignInServlet extends HttpServlet {
             return;
         }
 
-        UserProfile profile = accountService.getUserByLogin(login);
-        if (profile == null || !profile.getPass().equals(pass)) {
-            response.setContentType("text/html;charset=utf-8");
-            response.getWriter().println("Unauthorized");
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
+       try {
+           UserProfile profile = service.getUser(login);
+           if (profile == null || !profile.getPass().equals(pass)) {
+               response.setContentType("text/html;charset=utf-8");
+               response.getWriter().println("Unauthorized");
+               response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+               return;
+           }
 
-        accountService.addSession(request.getSession().getId(), profile);
+           service.addSession(profile.getId(), request.getSession().getId());
 
-        response.setContentType("text/html;charset=utf-8");
-        response.getWriter().println("Authorized: " + login);
-        response.setStatus(HttpServletResponse.SC_OK);
+           response.setContentType("text/html;charset=utf-8");
+           response.getWriter().println("Authorized: " + login);
+           response.setStatus(HttpServletResponse.SC_OK);
+       } catch (DBException dex){dex.printStackTrace();}
     }
 }

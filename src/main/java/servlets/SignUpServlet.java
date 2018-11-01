@@ -1,9 +1,7 @@
 package servlets;
 
-import accounts.AccountService;
-import accounts.UserProfile;
-import com.google.gson.Gson;
-
+import database.DBException;
+import database.DBService;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -17,10 +15,10 @@ import java.io.IOException;
 
 public class SignUpServlet extends HttpServlet {
 
-    private final AccountService accountService;
+    private final DBService service;
 
-    public SignUpServlet(AccountService accountService) {
-        this.accountService = accountService;
+    public SignUpServlet(DBService service) {
+        this.service = service;
     }
 
     //get page
@@ -32,6 +30,7 @@ public class SignUpServlet extends HttpServlet {
     //sign up
     public void doPost(HttpServletRequest request,
                        HttpServletResponse response) throws ServletException, IOException {
+
         String login = request.getParameter("login");
         String pass = request.getParameter("password");
 
@@ -41,16 +40,19 @@ public class SignUpServlet extends HttpServlet {
             return;
         }
 
-        UserProfile profile = accountService.getUserByLogin(login);
+       try {
+
+           if (service.getUser(login) == null) {
+               response.setContentType("text/html;charset=utf-8");
+               long userId = service.addUser(login, pass);
+               response.getWriter().println("Registration Successful");
+               response.setStatus(HttpServletResponse.SC_OK);
+           }
+       } catch (DBException dbe){dbe.printStackTrace();}
 
 
-        if (profile == null) {
-            UserProfile newProfile = new UserProfile(login, pass);
-            response.setContentType("text/html;charset=utf-8");
-            accountService.addNewUser(newProfile);
-            accountService.addSession(request.getSession().getId(), profile);
-            response.setStatus(HttpServletResponse.SC_OK);
-        }
+
+
 
     }
 }
